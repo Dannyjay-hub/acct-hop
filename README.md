@@ -14,7 +14,7 @@ A new account starts with an empty list, even though the conversations themselve
 ## Install (macOS, needs Python 3)
 
 ```bash
-git clone <this repo> && cd claude-session-sync
+cd claude-session-sync
 ./install.sh
 ```
 
