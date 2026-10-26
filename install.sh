@@ -24,7 +24,9 @@ python3 "$CSS_HOME/sync.py"
 
 echo "== Installing the menu bar app =="
 python3 -m venv "$CSS_HOME/venv"
-"$CSS_HOME/venv/bin/pip" install -q rumps
+"$CSS_HOME/venv/bin/pip" install -q --upgrade pip
+# pyobjc 12.0 was yanked (breaks on Python 3.9), so pin below it
+"$CSS_HOME/venv/bin/pip" install -q "pyobjc-core<12" "pyobjc-framework-Cocoa<12" rumps
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$PLIST" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
