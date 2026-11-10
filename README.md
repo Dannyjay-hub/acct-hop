@@ -1,7 +1,6 @@
 # acct-hop
 
 > **Unofficial.** Not affiliated with or endorsed by Anthropic. "Claude" is a trademark of Anthropic.
-> *(`acct-hop` is a working name.)*
 
 Keeps the **Code tab session list** of the Claude desktop app the same across every account you sign in with **on one Mac**. Sign in to a second account and your sessions are already there, instead of an empty sidebar.
 
