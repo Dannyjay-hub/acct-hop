@@ -4,12 +4,14 @@ import rumps
 HOME = os.environ.get("CSS_HOME") or os.path.expanduser("~/.claude-session-sync")
 SYNC = [sys.executable, os.path.join(HOME, "sync.py")]
 DONE = re.compile(r"done: (\d+) copied, (\d+) markers, (\d+) removed")
+STATUS = re.compile(r"status: (\S+)")
 
 
 def run():
+    """Returns (counts or None, status string)."""
     out = subprocess.run(SYNC, capture_output=True, text=True).stdout
-    m = DONE.search(out)
-    return tuple(int(x) for x in m.groups()) if m else None
+    m, s = DONE.search(out), STATUS.search(out)
+    return (tuple(int(x) for x in m.groups()) if m else None), (s.group(1) if s else "error")
 
 
 def open_folder(_):
@@ -34,7 +36,12 @@ class App(rumps.App):
         self.last.title = f"Last synced: {t}" + (f" ({r[0]} copied, {r[2]} removed)" if sum(r) else "")
 
     def tick(self, _):
-        r = run()
+        r, st = run()
+        if st == "unrecognised-layout":
+            self.status.title = "Paused: app layout not recognised"
+            self.title = "⇄!"
+            return
+        self.title = "⇄"
         if r is None:
             self.status.title = "Sync error (see sync.log)"
             return
@@ -43,10 +50,13 @@ class App(rumps.App):
         self.status.title = "All accounts in sync"
 
     def sync_now(self, _):
-        r = run()
-        if r:
+        r, st = run()
+        if st == "unrecognised-layout":
+            rumps.notification("Session sync", "Paused",
+                               "The app's session folder looks different. Nothing was changed. Run: sync.py doctor")
+        elif r:
             self.stamp(r)
-            rumps.notification("Claude session sync", "Done",
+            rumps.notification("Session sync", "Done",
                                f"{r[0]} copied, {r[2]} removed. Quit and reopen Claude to see changes.")
 
 

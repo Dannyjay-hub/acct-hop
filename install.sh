@@ -42,3 +42,4 @@ PL
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 echo "Done. Look for the ⇄ icon in your menu bar. Quit and reopen Claude after switching accounts."
+echo "If something looks wrong: python3 $CSS_HOME/sync.py doctor   (prints a redacted report, safe to share)"
