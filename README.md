@@ -23,7 +23,20 @@ Keeps the **Code tab session list** of the Claude desktop app the same across ev
 
 Session titles and conversation content can be sensitive. The tool never reads transcripts and its logs contain only session IDs, not titles. When you report a problem, **don't paste your session folder, logs, or any conversation**: run the `doctor` command below, which prints only counts and field names.
 
-## Install (macOS, Python 3)
+## Install
+
+### Option 1: the app (easiest)
+
+1. Download `acct-hop-<version>.dmg` from the [Releases page](https://github.com/Dannyjay-hub/acct-hop/releases).
+2. Open it and drag **acct-hop** to **Applications**, then open it.
+3. A dialog shows what it would sync and asks "Keep your sessions in sync?". Choose **Sync now**. A full backup is made first.
+4. A **⇄** icon appears in your menu bar. Choose **Open at login** from its menu if you want it to start with your Mac.
+
+The app is signed and notarized by Apple. It needs macOS 11 or later and runs on Apple Silicon and Intel Macs. The first time, macOS may ask whether acct-hop may access data from other apps. That's how it reads Claude's session list, so choose **Allow**.
+
+### Option 2: from source (Python 3)
+
+For people who want to read the code first, or run it without the app:
 
 ```bash
 git clone https://github.com/Dannyjay-hub/acct-hop.git && cd acct-hop
@@ -31,6 +44,8 @@ git clone https://github.com/Dannyjay-hub/acct-hop.git && cd acct-hop
 ```
 
 The installer shows a **dry run** first and changes nothing. It asks before the first real sync, takes a full backup, then installs the ⇄ menu bar app, which starts at login. If `python3` is missing, macOS offers to install Apple's command line tools. Accept, then run the installer again.
+
+Both options use the same `sync.py`, so they behave identically. Run only one of them at a time.
 
 ## Using it with a new account
 
@@ -41,6 +56,8 @@ The installer shows a **dry run** first and changes nothing. It asks before the 
 After any later account switch: **Sync now**, switch, Cmd+Q, reopen.
 
 ## If something looks wrong
+
+In the app, choose **Copy diagnostics (redacted)** from the ⇄ menu. From source, run:
 
 ```bash
 python3 ~/.claude-session-sync/sync.py doctor
@@ -62,11 +79,10 @@ The app keeps `~/Library/Application Support/Claude/claude-code-sessions/<accoun
 
 ## Uninstall
 
-```bash
-./uninstall.sh
-```
+- **App:** turn off **Open at login** in the ⇄ menu, choose **Quit**, and drag acct-hop out of Applications.
+- **From source:** run `./uninstall.sh`.
 
-Removes the login item. Your sessions are left alone.
+Your sessions are left alone. Backups stay in `~/.claude-session-sync/` until you delete that folder.
 
 ## Tests
 

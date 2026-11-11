@@ -15,7 +15,7 @@ Env (mainly for tests): CSS_ROOT overrides the claude-code-sessions folder,
 """
 import glob, json, os, platform, shutil, subprocess, sys, time
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 ROOT = os.environ.get("CSS_ROOT") or os.path.expanduser(
     "~/Library/Application Support/Claude/claude-code-sessions")
 HOME = os.environ.get("CSS_HOME") or os.path.expanduser("~/.claude-session-sync")
@@ -80,12 +80,16 @@ def backup_once():
     log("backed up the session lists to " + dest.replace(os.path.expanduser("~"), "~"))
 
 
-def sync():
+def sync(dry=None):
+    """Run one sync. Returns {"status", "copied", "markers", "removed", "targets"}."""
+    global DRY
+    if dry is not None:
+        DRY = dry
     if not recognised():
         print("status: unrecognised-layout")
         print("done: 0 copied, 0 markers, 0 removed, 0 target folders (no valid session entries found; "
               "nothing was changed. Run `sync.py doctor`)")
-        return
+        return {"status": "unrecognised-layout", "copied": 0, "markers": 0, "removed": 0, "targets": 0}
     if not DRY:
         backup_once()
     tgts = targets()
@@ -138,6 +142,7 @@ def sync():
         log(f"skipped {skipped} entry(ies) that were unreadable or still being written")
     print("status: ok")
     log(f"done: {copied} copied, {marked} markers, {removed} removed, {len(tgts)} target folders")
+    return {"status": "ok", "copied": copied, "markers": marked, "removed": removed, "targets": len(tgts)}
 
 
 def doctor():
