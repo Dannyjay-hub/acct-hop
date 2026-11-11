@@ -19,6 +19,12 @@ echo "== 1/5 build the app"
 rm -rf build dist
 python setup.py py2app > build.log 2>&1 || { echo "py2app failed, see build.log"; tail -15 build.log; exit 1; }
 
+# Never ship a build that contains the maintainer's home folder path (build from a neutral folder, e.g. /tmp).
+if grep -rqao "/Users/$USER" "$APP" 2>/dev/null; then
+  echo "refusing to continue: the app contains '/Users/$USER'. Build from a folder outside your home directory."
+  grep -rlao "/Users/$USER" "$APP" | head -5; exit 1
+fi
+
 echo "== 2/5 sign every binary inside the app, then the app (hardened runtime)"
 sign() { codesign --force --options runtime --timestamp --entitlements "$ENT" --sign "$IDENTITY" "$1"; }
 find "$APP" -type f -print0 | while IFS= read -r -d '' f; do
