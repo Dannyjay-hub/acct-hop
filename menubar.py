@@ -19,6 +19,14 @@ def open_folder(_):
     subprocess.run(["open", trash if os.path.isdir(trash) else HOME])
 
 
+# Menu bar only: no Dock icon and no Cmd-Tab entry (otherwise macOS shows a Python rocket in the Dock)
+try:
+    import AppKit
+    AppKit.NSBundle.mainBundle().infoDictionary()["LSUIElement"] = "1"
+except Exception:
+    pass
+
+
 class App(rumps.App):
     def __init__(self):
         super().__init__("⇄", quit_button=None)
