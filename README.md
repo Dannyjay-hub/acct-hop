@@ -26,7 +26,7 @@ Session titles and conversation content can be sensitive. The tool never reads t
 ## Install (macOS, Python 3)
 
 ```bash
-git clone <this repo> && cd acct-hop
+git clone https://github.com/Dannyjay-hub/acct-hop.git && cd acct-hop
 ./install.sh
 ```
 
