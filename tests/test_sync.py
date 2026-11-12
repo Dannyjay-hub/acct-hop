@@ -36,8 +36,8 @@ class T(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_sync(self, *args):
-        env = dict(os.environ, CSS_ROOT=self.root, CSS_HOME=self.home)
+    def run_sync(self, *args, **extra_env):
+        env = dict(os.environ, CSS_ROOT=self.root, CSS_HOME=self.home, **extra_env)
         return subprocess.run([sys.executable, SYNC, *args], env=env, capture_output=True, text=True).stdout
 
     def live(self, acct, org):
@@ -118,6 +118,25 @@ class T(unittest.TestCase):
         self.run_sync()
         self.assertEqual(read(keep), "mine")
         self.assertFalse(os.path.exists(os.path.join(self.root, "B", "o2", "scheduled-tasks.json")))
+
+    def test_non_english_characters_under_an_ascii_locale(self):
+        """A GUI-launched app has no locale: Python then reads text as ASCII. Real session files contain
+        non-English characters (accents, dashes, emoji) and must still sync."""
+        body = json.dumps({"sessionId": "local_uni", "cwd": "/x", "title": "Caf\u00e9 \u2014 \u2713 \u00fcber \U0001f680",
+                           "createdAt": 1, "lastActivityAt": 2}, ensure_ascii=False)
+        p = put(self.root, "A", "o1", "uni", content=None)
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(body)
+        t = time.time() - 60
+        os.utime(p, (t, t))
+        put(self.root, "B", "o2", "bbb")
+        ascii_env = dict(LC_ALL="C", LANG="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0")
+        out = self.run_sync(**ascii_env)
+        self.assertEqual(self.live("B", "o2"), ["local_bbb.json", "local_uni.json"], out)
+        self.assertNotIn("skipped", out)
+        with open(os.path.join(self.root, "B", "o2", "local_uni.json"), encoding="utf-8") as f:
+            self.assertIn("\u2713", f.read())                    # copied byte for byte
+        self.assertIn("layout recognised: yes", self.run_sync("doctor", **ascii_env))
 
     def test_doctor_is_redacted(self):
         put(self.root, "SECRET-ACCOUNT-ID", "SECRET-ORG-ID", "aaa", title="Private project name")

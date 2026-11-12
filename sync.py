@@ -15,7 +15,7 @@ Env (mainly for tests): CSS_ROOT overrides the claude-code-sessions folder,
 """
 import glob, json, os, platform, shutil, subprocess, sys, time
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 ROOT = os.environ.get("CSS_ROOT") or os.path.expanduser(
     "~/Library/Application Support/Claude/claude-code-sessions")
 HOME = os.environ.get("CSS_HOME") or os.path.expanduser("~/.claude-session-sync")
@@ -42,7 +42,7 @@ def valid_session(path):
     try:
         if time.time() - os.path.getmtime(path) < SETTLE_SECONDS:
             return False
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             d = json.load(f)
         return isinstance(d, dict) and str(d.get("sessionId", "")).startswith("local_")
     except (OSError, ValueError):
@@ -76,7 +76,8 @@ def backup_once():
     dest = os.path.join(HOME, "backups", "initial-" + time.strftime("%Y%m%d-%H%M%S"))
     os.makedirs(os.path.dirname(marker), exist_ok=True)
     shutil.copytree(ROOT, dest)
-    open(marker, "w").write(dest)
+    with open(marker, "w", encoding="utf-8") as mf:
+        mf.write(dest)
     log("backed up the session lists to " + dest.replace(os.path.expanduser("~"), "~"))
 
 
@@ -98,7 +99,8 @@ def sync(dry=None):
     deleted, skipped = {}, 0
     for d in all_dirs:
         for m in glob.glob(d + "/deleted_*"):
-            deleted[os.path.basename(m)[len("deleted_"):]] = open(m).read().strip()
+            with open(m, encoding="utf-8", errors="replace") as mf:
+                deleted[os.path.basename(m)[len("deleted_"):]] = mf.read().strip()
 
     best = {}
     for d in all_dirs:
@@ -126,7 +128,8 @@ def sync(dry=None):
             if not os.path.exists(mk):
                 log(f"mark deleted {sid} in {short(t)}")
                 if not DRY:
-                    open(mk, "w").write(ts)
+                    with open(mk, "w", encoding="utf-8") as mf:
+                        mf.write(ts)
                 marked += 1
     for d in all_dirs:
         for sid in deleted:
@@ -168,7 +171,8 @@ def doctor():
             row.append("org%d: %d sessions" % (oi, len(ok)))
             for f in ok:
                 try:
-                    d = json.load(open(f))
+                    with open(f, encoding="utf-8") as jf:
+                        d = json.load(jf)
                     for k in EXPECTED_KEYS:
                         keys_seen[k] += k in d
                 except (OSError, ValueError):
