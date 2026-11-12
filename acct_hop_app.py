@@ -22,6 +22,19 @@ HOME = sync.HOME
 CONSENT = os.path.join(HOME, "consent")
 AGENT = os.path.expanduser("~/Library/LaunchAgents/%s.plist" % BUNDLE_ID)
 LOCK = os.path.join(HOME, "app.lock")
+APPLOG = os.path.join(HOME, "app.log")
+
+
+def applog(msg):
+    """Append a line to ~/.claude-session-sync/app.log (kept small). Contains no titles or paths."""
+    try:
+        os.makedirs(HOME, exist_ok=True)
+        if os.path.exists(APPLOG) and os.path.getsize(APPLOG) > 200_000:
+            os.replace(APPLOG, APPLOG + ".old")
+        with open(APPLOG, "a") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
+    except OSError:
+        pass
 
 
 def single_instance():
@@ -63,6 +76,7 @@ class App(rumps.App):
             self.login,
             rumps.MenuItem("Copy diagnostics (redacted)", callback=self.copy_diagnostics),
             rumps.MenuItem("Open backups", callback=self.open_backups),
+            rumps.MenuItem("Open log", callback=self.open_log),
             None,
             rumps.MenuItem("About acct-hop", callback=self.about),
             rumps.MenuItem("Quit", callback=rumps.quit_application),
@@ -74,6 +88,7 @@ class App(rumps.App):
     # ---- start-up and first-run consent ---------------------------------
     def start(self, _):
         self.starter.stop()
+        applog("started v%s" % sync.VERSION)
         if os.environ.get("ACCT_HOP_AUTOCONSENT") == "1" and not os.path.exists(CONSENT):
             self.save_consent()                           # for automated tests only
         if not os.path.exists(CONSENT):
@@ -120,15 +135,32 @@ class App(rumps.App):
             return
         try:
             r, _ = capture(sync.sync, False)
-        except Exception as e:                            # never crash the menu bar app
-            self.status.title = "Sync error: %s" % str(e)[:40]
+        except PermissionError as e:
+            self.title = "⇄!"
+            self.status.title = "Blocked by macOS: allow acct-hop access (see About)"
+            if not getattr(self, "warned_perm", False):
+                self.warned_perm = True
+                applog("PERMISSION DENIED: %s" % e.__class__.__name__)
+                rumps.notification("acct-hop", "macOS is blocking acct-hop",
+                                   "Open System Settings > Privacy & Security > Full Disk Access and turn on acct-hop.")
             return
+        except Exception as e:                            # never crash the menu bar app
+            self.status.title = "Sync error (see Open log)"
+            applog("ERROR: %s: %s" % (e.__class__.__name__, str(e)[:120]))
+            return
+        self.warned_perm = False
         if r["status"] == "unrecognised-layout":
             self.title = "⇄!"
             self.status.title = "Paused: Claude's folder layout not recognised"
+            applog("paused: layout not recognised")
             return
         self.title = "⇄"
         self.status.title = "All accounts in sync"
+        if r["copied"] or r["removed"]:
+            applog("synced: %d copied, %d removed" % (r["copied"], r["removed"]))
+        elif time.time() - getattr(self, "last_beat", 0) > 3600:
+            self.last_beat = time.time()
+            applog("running, nothing to sync")
         if r["copied"] or r["removed"] or self.last.title.endswith("never"):
             self.stamp(r)
 
@@ -138,7 +170,14 @@ class App(rumps.App):
             if not os.path.exists(CONSENT):
                 return
             self.timer.start()
-        r, _ = capture(sync.sync, False)
+        try:
+            r, _ = capture(sync.sync, False)
+        except Exception as e:
+            applog("Sync now failed: %s: %s" % (e.__class__.__name__, str(e)[:120]))
+            rumps.alert(title="Couldn't sync",
+                        message=("%s\n\nIf this says 'Operation not permitted', open System Settings > Privacy & Security > "
+                                 "Full Disk Access and turn on acct-hop.") % e.__class__.__name__, ok="OK")
+            return
         if r["status"] == "unrecognised-layout":
             rumps.notification("acct-hop", "Paused", "Claude's session folder looks different. Nothing was changed.")
             return
@@ -166,6 +205,9 @@ class App(rumps.App):
         subprocess.run(["pbcopy"], input=text.encode())
         rumps.notification("acct-hop", "Diagnostics copied",
                            "A redacted report is on your clipboard. Safe to paste into a bug report.")
+
+    def open_log(self, _):
+        subprocess.run(["open", APPLOG if os.path.exists(APPLOG) else HOME])
 
     def open_backups(self, _):
         trash = os.path.join(HOME, "trash")
