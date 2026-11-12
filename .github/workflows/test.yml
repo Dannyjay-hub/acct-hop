@@ -3,8 +3,9 @@ on: [push, pull_request]
 jobs:
   test:
     # The tool only copies files, so the logic tests run on Linux, where runners are always available.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04          # pinned: "latest" moved to a release without Python 3.9
     strategy:
+      fail-fast: false
       matrix:
         python: ["3.9", "3.13"]
     steps:
